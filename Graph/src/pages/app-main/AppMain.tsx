@@ -1,78 +1,35 @@
-/*
- * 应用主页。
- * 2051565 
- * 创建于 2022年7月20日。
- */
-
 import {
-    CloseOutlined,
-    DeleteOutlined,
-    DownloadOutlined,
-    ImportOutlined,
     InfoCircleOutlined,
-    PlusOutlined,
-    SaveOutlined,
-    StarOutlined,
-    UnorderedListOutlined
 } from '@ant-design/icons'
-import {Button, Drawer, Input, message, Modal, notification, PageHeader, Select, Upload} from 'antd'
-import {DefaultOptionType} from 'antd/lib/select'
-import {RcFile} from 'antd/lib/upload'
-import {FilterFunc} from 'rc-select/lib/Select'
+import {Button, Modal} from 'antd'
 import React from 'react'
-import {FreeKeyObject} from '../../data-structure/FreeKeyObject'
-import {NodeBase, EdgeBase, Graph} from '../../data-structure/NodeBase'
+import {Node, Edge, Graph} from '../../data-structure/Base'
 import {MacroDefines} from '../../MacroDefines'
 import {Deque} from '../../components/Deque'
 import './AppMain.css'
 import TextArea from "antd/es/input/TextArea";
-import {GraphCanvas} from "../../components/GraphCanvas";
-import {GraphCategoryItemOption} from "echarts/types/src/chart/graph/GraphSeries";
-import {AdjacencyList} from "../../components/AdjacencyList";
-
-const {Option} = Select
+import {GraphCanvas} from "../../components/GraphCanvas"
+import {AdjacencyList} from "../../components/AdjacencyList"
 
 type AppState = {
-    /** 聚焦的节点。 */
-    nodeSelected: NodeBase | null,
-
-    /** 关系列表抽屉是否可见。 */
+    nodeSelected: Node | null,
     relationDrawerVisible: boolean,
-
-    /** 好友推荐抽屉是否可见。 */
     recommendFriendDrawerVisible: boolean
 }
 
-/**
- * 应用主页。含大部分逻辑。
- */
+const TimeSeg = 300;
+
 export default class AppMain extends React.Component<any, AppState> {
-    state: AppState = {
-        nodeSelected: null,
-        relationDrawerVisible: false,
-        recommendFriendDrawerVisible: false
-    }
-
-    /**
-     * 节点管理器。含用户和组织。
-     */
     private graph = new Graph()
-    private dequeRef: React.RefObject<Deque>
-    private graphRef: React.RefObject<GraphCanvas>
-    private adjacencyRef: React.RefObject<AdjacencyList>
+    private readonly bfsRef: React.RefObject<Deque>
+    private readonly dfsRef: React.RefObject<Deque>
+    private readonly graphRef: React.RefObject<GraphCanvas>
+    private readonly adjacencyRef: React.RefObject<AdjacencyList>
 
-    /**
-     * 窗口大小变更警告锁。
-     * 锁开时，不弹出警告。
-     */
-    private resizeWarningMsgLock = false
-
-    /**
-     * 构造。
-     */
     constructor(props: any) {
         super(props)
-        this.dequeRef = React.createRef()
+        this.bfsRef = React.createRef()
+        this.dfsRef = React.createRef()
         this.graphRef = React.createRef()
         this.adjacencyRef = React.createRef()
 
@@ -84,18 +41,97 @@ export default class AppMain extends React.Component<any, AppState> {
             centered: true,
             content: <div>
                 Author: 2053302<br/>
-                Tap input to input some data.<br/>
-                Then, tap BFS or DFS to show the stack.<br/>
+                First, tap input or random to get some data.<br/>
+                Then, tap BFS or DFS to show the queue or stack.<br/>
             </div>,
             icon: <InfoCircleOutlined style={{color: MacroDefines.PRIMARY_COLOR}}/>
         })
 
-        this.resizeUpdate = this.resizeUpdate.bind(this)
+
+    }
+
+    private randomGraph() {
+        this.graph = new Graph()
+        let n = Math.random() * 11 + 10
+        let data = new Array<String>()
+        for (let i = 0; i < n; i += 1) {
+            let str = ''
+            for (let j = 0; j < n; j += 1) {
+                str += (Math.random() * 3 > 1 ? '0' : '1')
+            }
+            data.push(str)
+        }
+        this.graph.importGraph(data)
+    }
+
+    private dfsVisit = new Map<number, number>()
+    private bfsVisit = new Map<number, number>()
+    private stack = new Array<Node>()
+
+    private sleep(milliseconds: number) {
+        return new Promise(resolve => setTimeout(resolve, milliseconds))
+    }
+
+    private async drawDfsStack() {
+        this.dfsRef.current?.showGraph(this.stack, 'DFS Stack')
+        await this.sleep(TimeSeg)
+    }
+
+    private async drawBfsQueue() {
+        this.bfsRef.current?.showGraph(this.queue, 'BFS Queue')
+        await this.sleep(TimeSeg)
+    }
+
+    private async dfs(now: number) {
+        this.dfsVisit.set(now, 1)
+        this.stack.push(this.graph.nodes[now - 1])
+        await this.drawDfsStack()
+        for (let e: Edge = this.graph.head[now - 1]; e && e.next && e.node.id !== now; e = e.next) {
+            if (this.dfsVisit.get(e.node.id) !== 1) {
+                await this.dfs(e.node.id)
+            }
+        }
+        this.stack.pop()
+        await this.drawDfsStack()
+    }
+
+    private queue = new Array<Node>()
+
+    private async bfs(start: number) {
+        this.queue.push(this.graph.nodes[start - 1])
+        await this.drawBfsQueue()
+        this.bfsVisit.set(start, 1)
+        while (this.queue.length > 0) {
+            let now = this.queue[0]
+            this.queue.shift()
+            await this.drawBfsQueue()
+            for (let e: Edge = this.graph.head[now.id - 1]; e && e.next && e.node.id !== now.id; e = e.next) {
+                if (this.bfsVisit.get(e.node.id) !== 1) {
+                    this.queue.push(e.node)
+                    this.bfsVisit.set(e.node.id, 1)
+                    await this.drawBfsQueue()
+                }
+            }
+        }
     }
 
     override render(): React.ReactNode {
         return <div className='pageContainer'>
             <div id='title'>Graph - 2053302</div>
+            <Button
+                id='randomBtn'
+                onClick={
+                    () => {
+                        this.randomGraph()
+                        this.graphRef.current?.showGraph(this.graph, 'Graph')
+                        this.adjacencyRef.current?.showGraph(this.graph, 'Adjacency')
+                    }
+                }
+                type='primary'
+                shape='round'
+            >
+                Random Graph
+            </Button>
             <Button
                 id='importBtn'
                 onClick={() => {
@@ -123,232 +159,82 @@ export default class AppMain extends React.Component<any, AppState> {
                 }}
                 type='primary'
                 shape='round'
-                icon={<DownloadOutlined/>}
             >
                 Input Graph
             </Button>
             <Button
                 id='dfsBtn'
-                onClick={() => {
-                    const onChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-                        console.log('Change:', e.target.value);
-                    };
-                    Modal.info({
-                        title: 'Import Graph List',
-                        okText: 'Sure',
-                        closable: true,
-                        maskClosable: true,
-                        centered: true,
-                        content: <div>
-                            <TextArea showCount maxLength={100} onChange={onChange}/>
-                        </div>,
-                        icon: <InfoCircleOutlined style={{color: MacroDefines.PRIMARY_COLOR}}/>
-                    })
-                }}
+                onClick={
+                    async () => {
+                        this.dfsVisit.clear()
+                        this.stack = new Array<Node>()
+                        for (let i = 1; i <= this.graph.nodes.length; i += 1) {
+                            if (this.dfsVisit.get(i) !== 1) {
+                                await this.dfs(i)
+                            }
+                        }
+                    }
+                }
                 type='primary'
                 shape='round'
-                icon={<DownloadOutlined/>}
             >
                 DFS
             </Button>
             <Button
                 id='bfsBtn'
-                onClick={() => {
-                    const onChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-                        console.log('Change:', e.target.value.split('\n'));
-                    };
-                    Modal.info({
-                        title: 'Import Graph List',
-                        okText: 'Sure',
-                        closable: true,
-                        maskClosable: true,
-                        centered: true,
-                        content: <div>
-                            <TextArea showCount onChange={onChange}/>
-                        </div>,
-                        icon: <InfoCircleOutlined style={{color: MacroDefines.PRIMARY_COLOR}}/>
-                    })
-                }}
+                onClick={
+                    async () => {
+                        this.bfsVisit.clear()
+                        this.queue = new Array<Node>()
+                        for (let i = 1; i <= this.graph.nodes.length; i += 1) {
+                            if (this.bfsVisit.get(i) !== 1) {
+                                await this.bfs(i)
+                            }
+                        }
+                    }
+                }
                 type='primary'
                 shape='round'
-                icon={<DownloadOutlined/>}
             >
                 BFS
             </Button>
 
-            <GraphCanvas style={{
-                borderRadius: '12px',
-                background: '#eef7f2af',
-                width: '45%',
-                height: '60%',
-                boxShadow: '0px 4px 10px #0005'
-            }} ref={this.graphRef}/>
 
-            <AdjacencyList style={{
-                borderRadius: '12px',
-                background: '#eef7f2af',
-                width: '45%',
-                height: '60%',
-                boxShadow: '0px 4px 10px #0005'
-            }} ref={this.adjacencyRef}/>
-            {/*<div className='elementContainer'>*/}
-            {/*    <div className='controlAreaContainer'>*/}
-            {/*        <div className='functionArea normalCard'>*/}
-            {/*            <div style={{*/}
-            {/*                width: 82,*/}
-            {/*                height: '100%',*/}
-            {/*                position: 'absolute',*/}
-            {/*                right: 12,*/}
-            {/*                display: 'flex',*/}
-            {/*                flexDirection: 'column',*/}
-            {/*                justifyContent: 'center'*/}
-            {/*            }}>*/}
-            {/*                <Upload*/}
-            {/*                    showUploadList={false}*/}
-            {/*                    maxCount={1}*/}
-            {/*                    accept='.sndat'*/}
-            {/*                >*/}
-            {/*                    <Button type='primary'*/}
-            {/*                            style={{*/}
-            {/*                                width: '100%',*/}
-            {/*                                boxShadow: '0px 4px 10px #0005'*/}
-            {/*                            }}*/}
-            {/*                            shape='round'*/}
-            {/*                            icon={<ImportOutlined/>}*/}
-            {/*                    >导入</Button>*/}
-            {/*                </Upload>*/}
+            <div className='columnContainer'>
+                <div className='rowContainer'>
+                    <GraphCanvas style={{
+                        borderRadius: '12px',
+                        background: '#eef7f2af',
+                        width: '46%',
+                        height: '80%',
+                        boxShadow: '0px 4px 10px #0005'
+                    }} ref={this.graphRef}/>
 
-            {/*                <Button type='primary'*/}
-            {/*                        style={{*/}
-            {/*                            width: '100%',*/}
-            {/*                            boxShadow: '0px 4px 10px #0005',*/}
-            {/*                            marginTop: 10*/}
-            {/*                        }}*/}
-            {/*                        shape='round'*/}
-            {/*                        icon={<SaveOutlined/>}*/}
-            {/*                >导出</Button>*/}
-
-            {/*            </div>*/}
-            {/*        </div>*/}
-            {/*    </div>*/}
-            {/*</div>*/}
-            {/*<div className='elementContainer'>*/}
-            {/*    <div className='controlAreaContainer'>*/}
-            {/*        <div className='functionArea normalCard'>*/}
-            {/*            { /* 个人或组织信息卡片。 *!/*/}
-            {/*            { /* 导入导出按钮。 *!/*/}
-            {/*            <div style={{*/}
-            {/*                width: 82,*/}
-            {/*                height: '100%',*/}
-            {/*                position: 'absolute',*/}
-            {/*                right: 12,*/}
-            {/*                display: 'flex',*/}
-            {/*                flexDirection: 'column',*/}
-            {/*                justifyContent: 'center'*/}
-            {/*            }}>*/}
-            {/*                <Upload*/}
-            {/*                    showUploadList={false}*/}
-            {/*                    maxCount={1}*/}
-            {/*                    accept='.sndat'*/}
-            {/*                >*/}
-            {/*                    <Button type='primary'*/}
-            {/*                            style={{*/}
-            {/*                                width: '100%',*/}
-            {/*                                boxShadow: '0px 4px 10px #0005'*/}
-            {/*                            }}*/}
-            {/*                            shape='round'*/}
-            {/*                            icon={<ImportOutlined/>}*/}
-            {/*                    >导入</Button>*/}
-            {/*                </Upload>*/}
-
-            {/*                <Button type='primary'*/}
-            {/*                        style={{*/}
-            {/*                            width: '100%',*/}
-            {/*                            boxShadow: '0px 4px 10px #0005',*/}
-            {/*                            marginTop: 10*/}
-            {/*                        }}*/}
-            {/*                        shape='round'*/}
-            {/*                        icon={<SaveOutlined/>}*/}
-            {/*                >导出</Button>*/}
-
-            {/*            </div>*/}
-            {/*        </div>*/}
-            {/*    </div>*/}
-            {/*</div>*/}
-            {/*<div className='elementContainer'>*/}
-            {/*    <div className='controlAreaContainer'>*/}
-            {/*        <div className='functionArea normalCard'>*/}
-            {/*            { /* 个人或组织信息卡片。 *!/*/}
-            {/*            { /* 导入导出按钮。 *!/*/}
-            {/*            <div style={{*/}
-            {/*                width: 82,*/}
-            {/*                height: '100%',*/}
-            {/*                position: 'absolute',*/}
-            {/*                right: 12,*/}
-            {/*                display: 'flex',*/}
-            {/*                flexDirection: 'column',*/}
-            {/*                justifyContent: 'center'*/}
-            {/*            }}>*/}
-            {/*                <Upload*/}
-            {/*                    showUploadList={false}*/}
-            {/*                    maxCount={1}*/}
-            {/*                    accept='.sndat'*/}
-            {/*                >*/}
-            {/*                    <Button type='primary'*/}
-            {/*                            style={{*/}
-            {/*                                width: '100%',*/}
-            {/*                                boxShadow: '0px 4px 10px #0005'*/}
-            {/*                            }}*/}
-            {/*                            shape='round'*/}
-            {/*                            icon={<ImportOutlined/>}*/}
-            {/*                    >导入</Button>*/}
-            {/*                </Upload>*/}
-
-            {/*                <Button type='primary'*/}
-            {/*                        style={{*/}
-            {/*                            width: '100%',*/}
-            {/*                            boxShadow: '0px 4px 10px #0005',*/}
-            {/*                            marginTop: 10*/}
-            {/*                        }}*/}
-            {/*                        shape='round'*/}
-            {/*                        icon={<SaveOutlined/>}*/}
-            {/*                >导出</Button>*/}
-
-            {/*            </div>*/}
-            {/*        </div>*/}
-            {/*    </div>*/}
-            {/*</div>*/}
+                    <AdjacencyList style={{
+                        borderRadius: '12px',
+                        background: '#eef7f2af',
+                        width: '46%',
+                        height: '80%',
+                        boxShadow: '0px 4px 10px #0005'
+                    }} ref={this.adjacencyRef}/>
+                </div>
+                <div className='columnContainer' style={{height: 250}}>
+                    <Deque style={{
+                        borderRadius: '12px',
+                        background: '#eef7f2af',
+                        width: '96.3%',
+                        height: 70,
+                        boxShadow: '0px 4px 10px #0005',
+                    }} ref={this.dfsRef}/>
+                    <Deque style={{
+                        borderRadius: '12px',
+                        background: '#eef7f2af',
+                        width: '96.3%',
+                        height: 70,
+                        boxShadow: '0px 4px 10px #0005',
+                    }} ref={this.bfsRef}/>
+                </div>
+            </div>
         </div>
-    }
-
-    /**
-     * 页面尺寸改变处理。
-     * 由于内部组件的绘制依赖原始画面大小，当画面大小改变时，可能无法及时更新。
-     * 解决方案：提醒用户刷新浏览器。提醒信息将常驻于页面，直到用户刷新浏览器。
-     */
-    private resizeUpdate() {
-        if (!this.resizeWarningMsgLock) {
-            this.resizeWarningMsgLock = true
-            notification.error({
-                message: '检测到页面尺寸改变',
-                description: '请刷新浏览器，否则可能导致显示效果异常。',
-                duration: null,
-                onClose: () => {
-                    message.error({
-                        content: '请刷新浏览器，否则可能导致显示效果异常。',
-                        duration: 0
-                    })
-                }
-            })
-
-        }
-    }
-
-    override componentDidMount() {
-        window.addEventListener('resize', this.resizeUpdate)
-    }
-
-    override componentWillUnmount() {
-        window.removeEventListener('resize', this.resizeUpdate)
     }
 }

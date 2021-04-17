@@ -59,7 +59,7 @@ export default class AppMain extends React.Component<any, AppState>
         return <div className='container'>
             <div id='title'>二叉树 - 2051565 - 数据科学与大数据技术</div>
 
-            <div className='elementContainer'>
+            <div className='columnContainer'>
                 <PainterCanvas ref={this.painterRef} style={{
                     width: '100%',
                     height: '80%',

@@ -1,6 +1,6 @@
 import React, {CSSProperties} from 'react'
 import * as echarts from 'echarts'
-import {EdgeBase, Graph} from '../data-structure/NodeBase'
+import {Edge, Graph} from '../data-structure/Base'
 import {FreeKeyObject} from '../data-structure/FreeKeyObject'
 
 export interface RelationChartProps {
@@ -43,16 +43,14 @@ export class GraphCanvas extends React.Component<RelationChartProps> {
             })
         })
 
-        console.log(graph.head)
         for (let i = 0; i < graph.head.length; i += 1) {
-            for (let e: EdgeBase = graph.head[i]; e && e.next && e.node.id !== i + 1; e = e.next) {
+            for (let e: Edge = graph.head[i]; e && e.next && e.node.id !== i + 1; e = e.next) {
                 links.push({
                     source: (i + 1).toString(),
                     target: e.node.id.toString()
                 })
             }
         }
-        console.log(data, links)
 
         this.chart.clear()
         this.chart.setOption({
@@ -67,7 +65,7 @@ export class GraphCanvas extends React.Component<RelationChartProps> {
                 roam: true,
                 force: {
                     repulsion: 100,
-                    edgeLength: 100
+                    edgeLength: 200
                 },
                 data: data,
                 label: {

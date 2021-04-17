@@ -1,130 +1,67 @@
-/*
- * 主页页面样式文件。
- * 2051565 
- * 创建于 2022年7月20日。
- */
-
 .pageContainer {
-    position: absolute;
     display: flex;
-    flex-direction: row;
+    flex-direction: column;
     align-items: center;
-    justify-content: center;
+    justify-content: space-around;
     overflow: hidden;
     width: 100vw;
     height: 100vh;
-    background: #83cbac;
+    background: #cacee1;
+    padding: 2%;
 }
 
 #title {
-    color: #fff;
+    color: #000;
     font-size: 24px;
     position: absolute;
-    left: 24px;
+    left: 70px;
     top: 18px;
+}
+
+#randomBtn {
+    position: absolute;
+    right: 500px;
+    top: 22px;
+    box-shadow: 0 4px 10px #0005;
 }
 
 #importBtn {
     position: absolute;
-    right: 400px;
-    top: 18px;
+    right: 340px;
+    top: 22px;
     box-shadow: 0 4px 10px #0005;
 }
 
 #dfsBtn {
     position: absolute;
-    right: 200px;
-    top: 18px;
+    right: 230px;
+    top: 22px;
     box-shadow: 0 4px 10px #0005;
 }
 
 #bfsBtn {
     position: absolute;
-    right: 24px;
-    top: 18px;
+    right: 120px;
+    top: 22px;
     box-shadow: 0 4px 10px #0005;
 }
 
-.elementContainer {
-    width: 96vw;
-    height: 86vh;
-    position: absolute;
-    bottom: 4vh;
-    display: flex;
-    flex-direction: row;
-}
-
-.controlAreaContainer {
-    width: 90%;
-    height: 100%;
+.columnContainer {
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: space-between;
-}
-
-.nodeBox {
-    width: 49.2%;
-    height: 100%;
-    display: flex;
-    flex-direction: column;
-    position: relative;
-}
-
-.functionArea {
+    overflow: hidden;
     width: 100%;
-    height: 18.2%;
-    position: relative;
+    height: 100%;
 }
 
-.normalCard {
-    box-shadow: 0px 4px 10px #0005;
-    border-radius: 12px;
-    background: #c4d7d67f;
-}
-
-.scrollY {
-    overflow-y: scroll;
-}
-
-.scrollViewCommon::-webkit-scrollbar {
-    width: 8px;
-    height: 8px;
-}
-
-.scrollViewCommon::-webkit-scrollbar-track {
-    background: #0000;
-}
-
-.scrollViewCommon::-webkit-scrollbar-thumb {
-    background: #0002;
-    border-radius: 4px;
-}
-
-.scrollViewCommon::-webkit-scrollbar-thumb:hover {
-    background: #0004;
-}
-
-.nodeCard {
-    box-shadow: 0px 4px 10px #0005;
-    border-radius: 12px;
-    background: #20a1627f;
-    color: #fff;
-    width: calc(100% - 12px);
-    height: 60px;
-    display: inline-flex;
-    justify-content: center;
+.rowContainer {
+    display: flex;
+    flex-direction: row;
     align-items: center;
-    font-size: 18px;
-    margin-left: 6px;
-    margin-right: 6px;
-    margin-top: 12px;
-}
-
-.nodeCard:active {
-    opacity: 0.72;
-}
-
-.nodeCard:hover {
-    background: #20a162af;
+    justify-content: space-around;
+    overflow: hidden;
+    width: 100%;
+    height: 100%;
 }

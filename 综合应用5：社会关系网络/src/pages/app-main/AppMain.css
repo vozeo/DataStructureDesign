@@ -33,7 +33,7 @@
     box-shadow: 0px 4px 10px #0005;
 }
 
-.elementContainer {
+.columnContainer {
     width: 96vw;
     height: 86vh;
     position: absolute;
@@ -42,7 +42,7 @@
     flex-direction: row;
 }
 
-.controlAreaContainer {
+.rowContainer {
     width: 49.2%;
     height: 100%;
     display: flex;

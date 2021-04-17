@@ -1,6 +1,6 @@
 import React, {CSSProperties} from 'react'
 import * as echarts from 'echarts'
-import {EdgeBase, Graph, NodeBase} from '../data-structure/NodeBase'
+import {Edge, Graph} from '../data-structure/Base'
 import {FreeKeyObject} from '../data-structure/FreeKeyObject'
 
 export interface RelationChartProps {
@@ -35,11 +35,14 @@ export class AdjacencyList extends React.Component<RelationChartProps> {
 
         let data = new Array<FreeKeyObject>()
         let links = new Array<FreeKeyObject>()
+        let xSeg = this.chart.getWidth() / graph.nodes.length * 2
+        let ySeg = this.chart.getHeight() / graph.nodes.length
 
         for (let i = 0; i <= graph.head.length; i += 1) {
             data.push({
                 name: 'head' + i.toString(),
-                draggable: true,
+                x: 0,
+                y: i * ySeg
             })
         }
 
@@ -52,11 +55,14 @@ export class AdjacencyList extends React.Component<RelationChartProps> {
 
         for (let i = 0; i < graph.head.length; i += 1) {
             let lstName = 'head' + (i + 1).toString()
-            for (let e: EdgeBase = graph.head[i]; e && e.next && e.node.id !== i + 1; e = e.next) {
+            let cnt = 0
+            for (let e: Edge = graph.head[i]; e && e.next && e.node.id !== i + 1; e = e.next) {
                 let nowName = (i + 1).toString() + '->' + e.node.id.toString()
                 data.push({
                     name: nowName,
                     draggable: true,
+                    x: (++cnt) * xSeg,
+                    y: (i + 1) * ySeg,
                 })
                 links.push({
                     source: lstName,
@@ -73,14 +79,10 @@ export class AdjacencyList extends React.Component<RelationChartProps> {
             },
             series: [{
                 type: 'graph',
-                layout: 'force',
+                layout: 'none',
                 symbolSize: 50,
                 focus: 'adjacency',
                 roam: true,
-                force: {
-                    repulsion: 1400,
-                    edgeLength: 10
-                },
                 data: data,
                 label: {
                     show: true,

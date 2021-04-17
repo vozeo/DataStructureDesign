@@ -1027,8 +1027,8 @@ export default class AppMain extends React.Component<any, AppState>
                 下载预置数据集
             </Button>
 
-            <div className='elementContainer'>
-                <div className='controlAreaContainer'>
+            <div className='columnContainer'>
+                <div className='rowContainer'>
 
                     {this.generateNodeBoxes()}
 

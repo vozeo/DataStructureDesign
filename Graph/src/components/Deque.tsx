@@ -1,6 +1,6 @@
 import React, {CSSProperties} from 'react'
 import * as echarts from 'echarts'
-import {NodeBase} from '../data-structure/NodeBase'
+import {Node} from '../data-structure/Base'
 import {FreeKeyObject} from '../data-structure/FreeKeyObject'
 
 export interface RelationChartProps {
@@ -28,61 +28,59 @@ export class Deque extends React.Component<RelationChartProps> {
         this.chart = echarts.init(this.selfRef.current!)
     }
 
-    showGraph(nodes: Array<NodeBase>, title: String) {
+    showGraph(nodes: Array<Node>, title: String) {
         this.setState({
             visibility: 'visible'
         })
 
         let data = new Array<FreeKeyObject>()
         let links = new Array<FreeKeyObject>()
+        let xSeg = this.chart.getWidth() / nodes.length
 
-        nodes.forEach(node => {
+        for (let i = 0; i < nodes.length; i += 1) {
             data.push({
-                name: node.id,
-                value: node.id,
-                id: node.id,
-                draggable: true,
+                name: nodes[i].id.toString(),
+                draggable: false,
+                x: i * xSeg,
+                y: this.chart.getHeight() / 2
             })
-        })
+        }
 
         for (let i = 0; i < nodes.length - 1; i += 1) {
             links.push({
-                source: nodes[i].id,
-                target: nodes[i + 1].id
+                source: nodes[i].id.toString(),
+                target: nodes[i + 1].id.toString()
             })
         }
 
         this.chart.clear()
+        if (nodes.length === 0) {
+            return
+        }
         this.chart.setOption({
-
             title: {
                 text: title,
             },
-
-            legend: {
-                x: 'center',
-                show: 'true',
-            },
-
             series: [{
+                animation: false,
                 type: 'graph',
-                layout: 'force',
-                symbolSize: 45,
-                focusNodeAdjacency: true,
+                layout: 'none',
+                symbolSize: 50,
+                focus: 'adjacency',
                 roam: true,
-                force: {
-                    repulsion: 1400
-                },
                 data: data,
                 label: {
                     show: true,
-                    position: 'right',
-                    formatter: '{c}'
                 },
+                textStyle: {
+                    fontSize: 20
+                },
+                edgeSymbol: ['', 'arrow'],
+                edgeSymbolSize: [0, 10],
                 links: links,
                 lineStyle: {
                     opacity: 0.9,
-                    width: 1,
+                    width: 2,
                     curveness: 0
                 },
             }]
