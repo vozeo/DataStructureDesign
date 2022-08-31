@@ -1,7 +1,7 @@
-import React, { CSSProperties } from 'react'
+import React, {CSSProperties} from 'react'
 import * as echarts from 'echarts'
-import { NodeBase } from '../data-structure/NodeBase'
-import { FreeKeyObject } from '../data-structure/FreeKeyObject'
+import {EdgeBase, Graph, NodeBase} from '../data-structure/NodeBase'
+import {FreeKeyObject} from '../data-structure/FreeKeyObject'
 
 export interface RelationChartProps {
     style?: CSSProperties
@@ -28,7 +28,7 @@ export class AdjacencyList extends React.Component<RelationChartProps> {
         this.chart = echarts.init(this.selfRef.current!)
     }
 
-    showGraph(nodes: Array<NodeBase>, title: String) {
+    showGraph(graph: Graph, title: String) {
         this.setState({
             visibility: 'visible'
         })
@@ -36,53 +36,61 @@ export class AdjacencyList extends React.Component<RelationChartProps> {
         let data = new Array<FreeKeyObject>()
         let links = new Array<FreeKeyObject>()
 
-        nodes.forEach(node => {
+        for (let i = 0; i <= graph.head.length; i += 1) {
             data.push({
-                name: node.id,
-                value: node.id,
-                id: node.id,
+                name: 'head' + i.toString(),
                 draggable: true,
             })
-        })
+        }
 
-        for (let i = 0; i < nodes.length - 1; i += 1) {
+        for (let i = 0; i < graph.head.length; i += 1) {
             links.push({
-                source: nodes[i].id,
-                target: nodes[i + 1].id
+                source: 'head' + i.toString(),
+                target: 'head' + (i + 1).toString()
             })
+        }
+
+        for (let i = 0; i < graph.head.length; i += 1) {
+            let lstName = 'head' + (i + 1).toString()
+            for (let e: EdgeBase = graph.head[i]; e && e.next && e.node.id !== i + 1; e = e.next) {
+                let nowName = (i + 1).toString() + '->' + e.node.id.toString()
+                data.push({
+                    name: nowName,
+                    draggable: true,
+                })
+                links.push({
+                    source: lstName,
+                    target: nowName
+                })
+                lstName = nowName
+            }
         }
 
         this.chart.clear()
         this.chart.setOption({
-
             title: {
                 text: title,
             },
-
-            legend: {
-                x: 'center',
-                show: 'true',
-            },
-
             series: [{
                 type: 'graph',
                 layout: 'force',
-                symbolSize: 45,
-                focusNodeAdjacency: true,
+                symbolSize: 50,
+                focus: 'adjacency',
                 roam: true,
                 force: {
-                    repulsion: 1400
+                    repulsion: 1400,
+                    edgeLength: 10
                 },
                 data: data,
                 label: {
                     show: true,
-                    position: 'right',
-                    formatter: '{c}'
                 },
+                edgeSymbol: ['', 'arrow'],
+                edgeSymbolSize: [0, 10],
                 links: links,
                 lineStyle: {
                     opacity: 0.9,
-                    width: 1,
+                    width: 2,
                     curveness: 0
                 },
             }]

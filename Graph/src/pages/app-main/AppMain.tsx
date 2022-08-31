@@ -28,6 +28,7 @@ import './AppMain.css'
 import TextArea from "antd/es/input/TextArea";
 import {GraphCanvas} from "../../components/GraphCanvas";
 import {GraphCategoryItemOption} from "echarts/types/src/chart/graph/GraphSeries";
+import {AdjacencyList} from "../../components/AdjacencyList";
 
 const {Option} = Select
 
@@ -58,6 +59,7 @@ export default class AppMain extends React.Component<any, AppState> {
     private graph = new Graph()
     private dequeRef: React.RefObject<Deque>
     private graphRef: React.RefObject<GraphCanvas>
+    private adjacencyRef: React.RefObject<AdjacencyList>
 
     /**
      * 窗口大小变更警告锁。
@@ -72,9 +74,8 @@ export default class AppMain extends React.Component<any, AppState> {
         super(props)
         this.dequeRef = React.createRef()
         this.graphRef = React.createRef()
-        // 绑定引用。
+        this.adjacencyRef = React.createRef()
 
-        // 首先弹出一个使用说明。
         Modal.info({
             title: 'Graph',
             okText: 'Sure',
@@ -89,13 +90,9 @@ export default class AppMain extends React.Component<any, AppState> {
             icon: <InfoCircleOutlined style={{color: MacroDefines.PRIMARY_COLOR}}/>
         })
 
-        // 注册成员函数。
         this.resizeUpdate = this.resizeUpdate.bind(this)
     }
 
-    /**
-     * React 渲染入口函数。
-     */
     override render(): React.ReactNode {
         return <div className='pageContainer'>
             <div id='title'>Graph - 2053302</div>
@@ -109,6 +106,7 @@ export default class AppMain extends React.Component<any, AppState> {
                     const handleOk = () => {
                         this.graph.importGraph(importList)
                         this.graphRef.current?.showGraph(this.graph, 'Graph')
+                        this.adjacencyRef.current?.showGraph(this.graph, 'Adjacency')
                     }
                     Modal.info({
                         title: 'Import Graph List',
@@ -181,140 +179,145 @@ export default class AppMain extends React.Component<any, AppState> {
             <GraphCanvas style={{
                 borderRadius: '12px',
                 background: '#eef7f2af',
-                width: '49.2%',
+                width: '45%',
                 height: '60%',
-                marginLeft: '1.4%',
                 boxShadow: '0px 4px 10px #0005'
             }} ref={this.graphRef}/>
-            <div className='elementContainer'>
-                <div className='controlAreaContainer'>
-                    <div className='functionArea normalCard'>
-                        { /* 个人或组织信息卡片。 */}
-                        { /* 导入导出按钮。 */}
-                        <div style={{
-                            width: 82,
-                            height: '100%',
-                            position: 'absolute',
-                            right: 12,
-                            display: 'flex',
-                            flexDirection: 'column',
-                            justifyContent: 'center'
-                        }}>
-                            <Upload
-                                showUploadList={false}
-                                maxCount={1}
-                                accept='.sndat'
-                            >
-                                <Button type='primary'
-                                        style={{
-                                            width: '100%',
-                                            boxShadow: '0px 4px 10px #0005'
-                                        }}
-                                        shape='round'
-                                        icon={<ImportOutlined/>}
-                                >导入</Button>
-                            </Upload>
 
-                            <Button type='primary'
-                                    style={{
-                                        width: '100%',
-                                        boxShadow: '0px 4px 10px #0005',
-                                        marginTop: 10
-                                    }}
-                                    shape='round'
-                                    icon={<SaveOutlined/>}
-                            >导出</Button>
+            <AdjacencyList style={{
+                borderRadius: '12px',
+                background: '#eef7f2af',
+                width: '45%',
+                height: '60%',
+                boxShadow: '0px 4px 10px #0005'
+            }} ref={this.adjacencyRef}/>
+            {/*<div className='elementContainer'>*/}
+            {/*    <div className='controlAreaContainer'>*/}
+            {/*        <div className='functionArea normalCard'>*/}
+            {/*            <div style={{*/}
+            {/*                width: 82,*/}
+            {/*                height: '100%',*/}
+            {/*                position: 'absolute',*/}
+            {/*                right: 12,*/}
+            {/*                display: 'flex',*/}
+            {/*                flexDirection: 'column',*/}
+            {/*                justifyContent: 'center'*/}
+            {/*            }}>*/}
+            {/*                <Upload*/}
+            {/*                    showUploadList={false}*/}
+            {/*                    maxCount={1}*/}
+            {/*                    accept='.sndat'*/}
+            {/*                >*/}
+            {/*                    <Button type='primary'*/}
+            {/*                            style={{*/}
+            {/*                                width: '100%',*/}
+            {/*                                boxShadow: '0px 4px 10px #0005'*/}
+            {/*                            }}*/}
+            {/*                            shape='round'*/}
+            {/*                            icon={<ImportOutlined/>}*/}
+            {/*                    >导入</Button>*/}
+            {/*                </Upload>*/}
 
-                        </div>
-                    </div>
-                </div>
-            </div>
-            <div className='elementContainer'>
-                <div className='controlAreaContainer'>
-                    <div className='functionArea normalCard'>
-                        { /* 个人或组织信息卡片。 */}
-                        { /* 导入导出按钮。 */}
-                        <div style={{
-                            width: 82,
-                            height: '100%',
-                            position: 'absolute',
-                            right: 12,
-                            display: 'flex',
-                            flexDirection: 'column',
-                            justifyContent: 'center'
-                        }}>
-                            <Upload
-                                showUploadList={false}
-                                maxCount={1}
-                                accept='.sndat'
-                            >
-                                <Button type='primary'
-                                        style={{
-                                            width: '100%',
-                                            boxShadow: '0px 4px 10px #0005'
-                                        }}
-                                        shape='round'
-                                        icon={<ImportOutlined/>}
-                                >导入</Button>
-                            </Upload>
+            {/*                <Button type='primary'*/}
+            {/*                        style={{*/}
+            {/*                            width: '100%',*/}
+            {/*                            boxShadow: '0px 4px 10px #0005',*/}
+            {/*                            marginTop: 10*/}
+            {/*                        }}*/}
+            {/*                        shape='round'*/}
+            {/*                        icon={<SaveOutlined/>}*/}
+            {/*                >导出</Button>*/}
 
-                            <Button type='primary'
-                                    style={{
-                                        width: '100%',
-                                        boxShadow: '0px 4px 10px #0005',
-                                        marginTop: 10
-                                    }}
-                                    shape='round'
-                                    icon={<SaveOutlined/>}
-                            >导出</Button>
+            {/*            </div>*/}
+            {/*        </div>*/}
+            {/*    </div>*/}
+            {/*</div>*/}
+            {/*<div className='elementContainer'>*/}
+            {/*    <div className='controlAreaContainer'>*/}
+            {/*        <div className='functionArea normalCard'>*/}
+            {/*            { /* 个人或组织信息卡片。 *!/*/}
+            {/*            { /* 导入导出按钮。 *!/*/}
+            {/*            <div style={{*/}
+            {/*                width: 82,*/}
+            {/*                height: '100%',*/}
+            {/*                position: 'absolute',*/}
+            {/*                right: 12,*/}
+            {/*                display: 'flex',*/}
+            {/*                flexDirection: 'column',*/}
+            {/*                justifyContent: 'center'*/}
+            {/*            }}>*/}
+            {/*                <Upload*/}
+            {/*                    showUploadList={false}*/}
+            {/*                    maxCount={1}*/}
+            {/*                    accept='.sndat'*/}
+            {/*                >*/}
+            {/*                    <Button type='primary'*/}
+            {/*                            style={{*/}
+            {/*                                width: '100%',*/}
+            {/*                                boxShadow: '0px 4px 10px #0005'*/}
+            {/*                            }}*/}
+            {/*                            shape='round'*/}
+            {/*                            icon={<ImportOutlined/>}*/}
+            {/*                    >导入</Button>*/}
+            {/*                </Upload>*/}
 
-                        </div>
-                    </div>
-                </div>
-            </div>
-            <div className='elementContainer'>
-                <div className='controlAreaContainer'>
-                    <div className='functionArea normalCard'>
-                        { /* 个人或组织信息卡片。 */}
-                        { /* 导入导出按钮。 */}
-                        <div style={{
-                            width: 82,
-                            height: '100%',
-                            position: 'absolute',
-                            right: 12,
-                            display: 'flex',
-                            flexDirection: 'column',
-                            justifyContent: 'center'
-                        }}>
-                            <Upload
-                                showUploadList={false}
-                                maxCount={1}
-                                accept='.sndat'
-                            >
-                                <Button type='primary'
-                                        style={{
-                                            width: '100%',
-                                            boxShadow: '0px 4px 10px #0005'
-                                        }}
-                                        shape='round'
-                                        icon={<ImportOutlined/>}
-                                >导入</Button>
-                            </Upload>
+            {/*                <Button type='primary'*/}
+            {/*                        style={{*/}
+            {/*                            width: '100%',*/}
+            {/*                            boxShadow: '0px 4px 10px #0005',*/}
+            {/*                            marginTop: 10*/}
+            {/*                        }}*/}
+            {/*                        shape='round'*/}
+            {/*                        icon={<SaveOutlined/>}*/}
+            {/*                >导出</Button>*/}
 
-                            <Button type='primary'
-                                    style={{
-                                        width: '100%',
-                                        boxShadow: '0px 4px 10px #0005',
-                                        marginTop: 10
-                                    }}
-                                    shape='round'
-                                    icon={<SaveOutlined/>}
-                            >导出</Button>
+            {/*            </div>*/}
+            {/*        </div>*/}
+            {/*    </div>*/}
+            {/*</div>*/}
+            {/*<div className='elementContainer'>*/}
+            {/*    <div className='controlAreaContainer'>*/}
+            {/*        <div className='functionArea normalCard'>*/}
+            {/*            { /* 个人或组织信息卡片。 *!/*/}
+            {/*            { /* 导入导出按钮。 *!/*/}
+            {/*            <div style={{*/}
+            {/*                width: 82,*/}
+            {/*                height: '100%',*/}
+            {/*                position: 'absolute',*/}
+            {/*                right: 12,*/}
+            {/*                display: 'flex',*/}
+            {/*                flexDirection: 'column',*/}
+            {/*                justifyContent: 'center'*/}
+            {/*            }}>*/}
+            {/*                <Upload*/}
+            {/*                    showUploadList={false}*/}
+            {/*                    maxCount={1}*/}
+            {/*                    accept='.sndat'*/}
+            {/*                >*/}
+            {/*                    <Button type='primary'*/}
+            {/*                            style={{*/}
+            {/*                                width: '100%',*/}
+            {/*                                boxShadow: '0px 4px 10px #0005'*/}
+            {/*                            }}*/}
+            {/*                            shape='round'*/}
+            {/*                            icon={<ImportOutlined/>}*/}
+            {/*                    >导入</Button>*/}
+            {/*                </Upload>*/}
 
-                        </div>
-                    </div>
-                </div>
-            </div>
+            {/*                <Button type='primary'*/}
+            {/*                        style={{*/}
+            {/*                            width: '100%',*/}
+            {/*                            boxShadow: '0px 4px 10px #0005',*/}
+            {/*                            marginTop: 10*/}
+            {/*                        }}*/}
+            {/*                        shape='round'*/}
+            {/*                        icon={<SaveOutlined/>}*/}
+            {/*                >导出</Button>*/}
+
+            {/*            </div>*/}
+            {/*        </div>*/}
+            {/*    </div>*/}
+            {/*</div>*/}
         </div>
     }
 

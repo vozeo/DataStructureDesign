@@ -1,6 +1,6 @@
 import React, {CSSProperties} from 'react'
 import * as echarts from 'echarts'
-import {Graph, NodeBase} from '../data-structure/NodeBase'
+import {EdgeBase, Graph} from '../data-structure/NodeBase'
 import {FreeKeyObject} from '../data-structure/FreeKeyObject'
 
 export interface RelationChartProps {
@@ -38,52 +38,45 @@ export class GraphCanvas extends React.Component<RelationChartProps> {
 
         graph.nodes.forEach(node => {
             data.push({
-                name: node.id,
-                value: node.id,
-                id: node.id,
+                name: node.id.toString(),
                 draggable: true,
             })
         })
 
-        for (let i = 0; i < graph.head.length - 1; i += 1) {
-            for (let e = graph.head[i]; e.next !== undefined; e = e.next) {
+        console.log(graph.head)
+        for (let i = 0; i < graph.head.length; i += 1) {
+            for (let e: EdgeBase = graph.head[i]; e && e.next && e.node.id !== i + 1; e = e.next) {
                 links.push({
-                    source: graph.head[i].node?.id,
-                    target: e.node?.id
+                    source: (i + 1).toString(),
+                    target: e.node.id.toString()
                 })
             }
         }
+        console.log(data, links)
 
         this.chart.clear()
         this.chart.setOption({
             title: {
                 text: title,
             },
-
-            legend: {
-                x: 'center',
-                show: 'true',
-            },
-
             series: [{
                 type: 'graph',
                 layout: 'force',
-                symbolSize: 45,
-                focusNodeAdjacency: true,
+                symbolSize: 50,
+                focus: 'adjacency',
                 roam: true,
                 force: {
-                    repulsion: 1400
+                    repulsion: 100,
+                    edgeLength: 100
                 },
                 data: data,
                 label: {
                     show: true,
-                    position: 'right',
-                    formatter: '{c}'
                 },
                 links: links,
                 lineStyle: {
                     opacity: 0.9,
-                    width: 1,
+                    width: 2,
                     curveness: 0
                 },
             }]
