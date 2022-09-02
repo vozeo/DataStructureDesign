@@ -3,12 +3,13 @@ import {
 } from '@ant-design/icons'
 import {Button, Modal, Space, Table, Input} from 'antd'
 import React from 'react'
-import {Node, Line, Graph} from '../../data-structure/Base'
+import {Node, Edge, Line, Graph} from '../../data-structure/Base'
 import {MacroDefines} from '../../MacroDefines'
 import './AppMain.css'
 import TextArea from "antd/es/input/TextArea";
 import type {ColumnsType} from 'antd/es/table';
 import {GraphCanvas} from "../../components/GraphCanvas"
+import {LineData, StationData} from "../../data/Data";
 
 type AppState = {
     nodeSelected: Node | null,
@@ -54,6 +55,11 @@ interface InputLine {
     stations: Array<string>
 }
 
+interface NodeBfsState {
+    node: Node
+    line: Array<Node>
+}
+
 export default class AppMain extends React.Component<any, AppState> {
     private graph = new Graph()
     private lines = new Array<Line>()
@@ -77,14 +83,6 @@ export default class AppMain extends React.Component<any, AppState> {
         })
     }
 
-    private dfsVisit = new Map<number, number>()
-    private bfsVisit = new Map<number, number>()
-    private stack = new Array<Node>()
-
-    private sleep(milliseconds: number) {
-        return new Promise(resolve => setTimeout(resolve, milliseconds))
-    }
-
     private InputError() {
         Modal.info({
             title: 'Input Error',
@@ -97,6 +95,22 @@ export default class AppMain extends React.Component<any, AppState> {
             </div>,
             icon: <InfoCircleOutlined style={{color: MacroDefines.PRIMARY_COLOR}}/>,
         })
+    }
+
+    private loadDefaultData() {
+        this.graph = new Graph()
+        let nodes: Array<InputNode> = JSON.parse(StationData)
+        nodes.forEach(node => {
+            this.graph.addNode(node.name, node.lon, node.lat)
+        })
+        console.log(this.graph.nodes)
+        this.lines = new Array<Line>()
+        let lines: Array<InputLine> = JSON.parse(LineData)
+        lines.forEach(line => {
+            this.lines.push(new Line(line.name, line.stations))
+        })
+        console.log(this.lines)
+        this.graph.updateGraph(this.lines)
     }
 
     private addStation(data: string) {
@@ -144,7 +158,7 @@ export default class AppMain extends React.Component<any, AppState> {
             let inputLines: Array<string> = JSON.parse(data)
             inputLines.forEach(name => {
                 for (let i = 0; i < this.lines.length; ++i) {
-                    if (this.lines[i].name == name) {
+                    if (this.lines[i].name === name) {
                         this.lines.splice(i, 1)
                         break
                     }
@@ -155,16 +169,52 @@ export default class AppMain extends React.Component<any, AppState> {
         }
     }
 
+    private bfsVisit = new Map<number, number>()
+    private queue = new Array<NodeBfsState>()
+
+    private async bfs(start: string, end: string) {
+        let startNode: Node = this.graph.nodes[0]
+        for (let node of this.graph.nodes) {
+            if (node.name === start) {
+                startNode = node
+                break
+            }
+        }
+        this.queue.push({
+            node: startNode,
+            line: Array<Node>(startNode),
+        })
+        this.bfsVisit.set(startNode.id, 1)
+        while (this.queue.length > 0) {
+            let now = this.queue[0]
+            if (now.node.name === end) {
+                return this.queue[0].line
+            }
+            this.queue.shift()
+            for (let e: Edge = this.graph.head[now.node.id - 1]; e && e.next && e.node.id !== now.node.id; e = e.next) {
+                if (this.bfsVisit.get(e.node.id) !== 1) {
+                    let nowLine = now.line
+                    nowLine.push(e.node)
+                    this.queue.push({
+                        node: e.node,
+                        line: nowLine
+                    })
+                    this.bfsVisit.set(e.node.id, 1)
+                }
+            }
+        }
+        return new Array<Node>()
+    }
+
     override render(): React.ReactNode {
         return <div className='pageContainer'>
             <div id='title'>Metro - 2053302</div>
             <Button
                 id='randomBtn'
-                onClick={
-                    () => {
-                        this.graphRef.current?.showGraph(this.graph, 'Graph')
-                    }
-                }
+                onClick={() => {
+                    this.loadDefaultData()
+                    this.graphRef.current?.showGraph(this.graph, 'Graph')
+                }}
                 type='primary'
                 shape='round'
             >
@@ -319,11 +369,9 @@ export default class AppMain extends React.Component<any, AppState> {
             </Button>
             <Button
                 id='bfsBtn'
-                onClick={
-                    async () => {
-                        this.bfsVisit.clear()
-                    }
-                }
+                onClick={() => {
+                    let ansLine = this.bfs('', '')
+                }}
                 type='primary'
                 shape='round'
             >
@@ -333,8 +381,8 @@ export default class AppMain extends React.Component<any, AppState> {
             <GraphCanvas style={{
                 borderRadius: '12px',
                 background: '#eef7f2af',
-                width: '46%',
-                height: '80%',
+                width: '98%',
+                height: '90%',
                 boxShadow: '0px 4px 10px #0005'
             }} ref={this.graphRef}/>
 

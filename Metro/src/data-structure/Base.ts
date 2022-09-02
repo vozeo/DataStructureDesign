@@ -1,6 +1,6 @@
 export class Node {
     id: number = 0
-    name: String = ''
+    name: string = ''
     lon: number = 0.0 // longitude
     lat: number = 0.0 // latitude
 
@@ -48,7 +48,7 @@ export class Graph {
     deleteNode(name: string) {
         this.NameToId.delete(name)
         for (let i = 0; i < this.nodes.length; ++i) {
-            if (this.nodes[i].name == name) {
+            if (this.nodes[i].name === name) {
                 this.nodes.splice(i, 1)
                 this.head.splice(i, 1)
                 return
@@ -68,13 +68,13 @@ export class Graph {
     }
 
     addEdge(u: string, v: string) {
-        let xId = this.NameToId.get(u)
-        let yId = this.NameToId.get(v)
-        if (xId === undefined || yId == undefined) {
+        let uId = this.NameToId.get(u)
+        let vId = this.NameToId.get(v)
+        if (uId === undefined || vId === undefined) {
             return
         }
-        this.addArc(xId, yId)
-        this.addArc(yId, xId)
+        this.addArc(uId, vId)
+        this.addArc(vId, uId)
     }
 
     updateGraph(lines: Array<Line>) {
