@@ -15,9 +15,11 @@ export class Node {
 export class Line {
     name: string = ''
     nodeNames = new Array<string>()
+    nodeListJson = ''
     constructor(name: string = '', nodeNames: Array<string> = new Array<string>()) {
         this.name = name
         this.nodeNames = nodeNames
+        this.nodeListJson = JSON.stringify(nodeNames)
     }
 }
 
@@ -39,6 +41,7 @@ export class Graph {
 
     addNode(name: string, lon: number, lat: number) {
         this.nodes.push(new Node(++this.idCnt, name, lon, lat))
+        this.head.push(new Edge(this.nodes[this.nodes.length - 1], null))
         this.NameToId.set(name, this.idCnt)
     }
 
@@ -47,6 +50,7 @@ export class Graph {
         for (let i = 0; i < this.nodes.length; ++i) {
             if (this.nodes[i].name == name) {
                 this.nodes.splice(i, 1)
+                this.head.splice(i, 1)
                 return
             }
         }

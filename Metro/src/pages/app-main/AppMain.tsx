@@ -1,15 +1,14 @@
 import {
     InfoCircleOutlined,
 } from '@ant-design/icons'
-import {Button, Modal} from 'antd'
+import {Button, Modal, Space, Table, Input} from 'antd'
 import React from 'react'
-import {Node, Edge, Line, Graph} from '../../data-structure/Base'
+import {Node, Line, Graph} from '../../data-structure/Base'
 import {MacroDefines} from '../../MacroDefines'
-import {Deque} from '../../components/Deque'
 import './AppMain.css'
 import TextArea from "antd/es/input/TextArea";
+import type {ColumnsType} from 'antd/es/table';
 import {GraphCanvas} from "../../components/GraphCanvas"
-import {AdjacencyList} from "../../components/AdjacencyList"
 
 type AppState = {
     nodeSelected: Node | null,
@@ -17,7 +16,43 @@ type AppState = {
     recommendFriendDrawerVisible: boolean
 }
 
-const TimeSeg = 300;
+const StationColumns: ColumnsType<Node> = [
+    {
+        title: 'Name',
+        dataIndex: 'name',
+        key: 'name',
+    },
+    {
+        title: 'Lon',
+        dataIndex: 'lon',
+        key: 'lon',
+    },
+    {
+        title: 'Lat',
+        dataIndex: 'lat',
+        key: 'lat',
+    },
+]
+
+const LineColumns: ColumnsType<Line> = [
+    {
+        title: 'Line Name',
+        dataIndex: 'name',
+        key: 'name',
+    },
+    Table.EXPAND_COLUMN
+]
+
+interface InputNode {
+    name: string
+    lon: number
+    lat: number
+}
+
+interface InputLine {
+    name: string
+    stations: Array<string>
+}
 
 export default class AppMain extends React.Component<any, AppState> {
     private graph = new Graph()
@@ -27,7 +62,6 @@ export default class AppMain extends React.Component<any, AppState> {
     constructor(props: any) {
         super(props)
         this.graphRef = React.createRef()
-
         Modal.info({
             title: 'Graph',
             okText: 'Sure',
@@ -43,20 +77,6 @@ export default class AppMain extends React.Component<any, AppState> {
         })
     }
 
-    private randomGraph() {
-        this.graph = new Graph()
-        let n = Math.random() * 11 + 10
-        let data = new Array<String>()
-        for (let i = 0; i < n; i += 1) {
-            let str = ''
-            for (let j = 0; j < n; j += 1) {
-                str += (Math.random() * 3 > 1 ? '0' : '1')
-            }
-            data.push(str)
-        }
-        this.graph.importGraph(data)
-    }
-
     private dfsVisit = new Map<number, number>()
     private bfsVisit = new Map<number, number>()
     private stack = new Array<Node>()
@@ -65,169 +85,260 @@ export default class AppMain extends React.Component<any, AppState> {
         return new Promise(resolve => setTimeout(resolve, milliseconds))
     }
 
-    private async drawDfsStack() {
-        this.dfsRef.current?.showGraph(this.stack, 'DFS Stack')
-        await this.sleep(TimeSeg)
+    private InputError() {
+        Modal.info({
+            title: 'Input Error',
+            okText: 'OK',
+            closable: true,
+            maskClosable: true,
+            centered: true,
+            content: <div>
+                Your input data has error, please input correct data!
+            </div>,
+            icon: <InfoCircleOutlined style={{color: MacroDefines.PRIMARY_COLOR}}/>,
+        })
     }
 
-    private async drawBfsQueue() {
-        this.bfsRef.current?.showGraph(this.queue, 'BFS Queue')
-        await this.sleep(TimeSeg)
-    }
-
-    private async dfs(now: number) {
-        this.dfsVisit.set(now, 1)
-        this.stack.push(this.graph.nodes[now - 1])
-        await this.drawDfsStack()
-        for (let e: Edge = this.graph.head[now - 1]; e && e.next && e.node.id !== now; e = e.next) {
-            if (this.dfsVisit.get(e.node.id) !== 1) {
-                await this.dfs(e.node.id)
-            }
-        }
-        this.stack.pop()
-        await this.drawDfsStack()
-    }
-
-    private queue = new Array<Node>()
-
-    private async bfs(start: number) {
-        this.queue.push(this.graph.nodes[start - 1])
-        await this.drawBfsQueue()
-        this.bfsVisit.set(start, 1)
-        while (this.queue.length > 0) {
-            let now = this.queue[0]
-            this.queue.shift()
-            await this.drawBfsQueue()
-            for (let e: Edge = this.graph.head[now.id - 1]; e && e.next && e.node.id !== now.id; e = e.next) {
-                if (this.bfsVisit.get(e.node.id) !== 1) {
-                    this.queue.push(e.node)
-                    this.bfsVisit.set(e.node.id, 1)
-                    await this.drawBfsQueue()
+    private addStation(data: string) {
+        try {
+            let inputNodes: Array<InputNode> = JSON.parse(data)
+            inputNodes.forEach(node => {
+                if (!this.graph.NameToId.has(node.name)) {
+                    this.graph.addNode(node.name, node.lon, node.lat)
                 }
-            }
+            })
+        } catch (e) {
+            this.InputError()
+        }
+    }
+
+    private deleteStation(data: string) {
+        try {
+            let inputNodes: Array<string> = JSON.parse(data)
+            inputNodes.forEach(name => {
+                this.graph.deleteNode(name)
+            })
+        } catch (e) {
+            this.InputError()
+        }
+    }
+
+    private addLine(data: string) {
+        try {
+            let inputLines: Array<InputLine> = JSON.parse(data)
+            inputLines.forEach(line => {
+                line.stations.forEach(station => {
+                    if (!this.graph.NameToId.has(station)) {
+                        throw new Error('The station has not be inputted!')
+                    }
+                })
+                this.lines.push(new Line(line.name, line.stations))
+            })
+        } catch (e) {
+            this.InputError()
+        }
+    }
+
+    private deleteLine(data: string) {
+        try {
+            let inputLines: Array<string> = JSON.parse(data)
+            inputLines.forEach(name => {
+                for (let i = 0; i < this.lines.length; ++i) {
+                    if (this.lines[i].name == name) {
+                        this.lines.splice(i, 1)
+                        break
+                    }
+                }
+            })
+        } catch (e) {
+            this.InputError()
         }
     }
 
     override render(): React.ReactNode {
         return <div className='pageContainer'>
-            <div id='title'>Graph - 2053302</div>
+            <div id='title'>Metro - 2053302</div>
             <Button
                 id='randomBtn'
                 onClick={
                     () => {
-                        this.randomGraph()
                         this.graphRef.current?.showGraph(this.graph, 'Graph')
-                        this.adjacencyRef.current?.showGraph(this.graph, 'Adjacency')
                     }
                 }
                 type='primary'
                 shape='round'
             >
-                Random Graph
+                Default Lines
             </Button>
             <Button
                 id='importBtn'
                 onClick={() => {
-                    let importList: String[]
-                    const onChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-                        importList = e.target.value.split('\n')
-                    }
-                    const handleOk = () => {
-                        this.graph.importGraph(importList)
-                        this.graphRef.current?.showGraph(this.graph, 'Graph')
-                        this.adjacencyRef.current?.showGraph(this.graph, 'Adjacency')
-                    }
                     Modal.info({
-                        title: 'Import Graph List',
-                        okText: 'Sure',
+                        title: 'Station Manage',
+                        okText: 'OK',
                         closable: true,
                         maskClosable: true,
                         centered: true,
                         content: <div>
-                            <TextArea showCount onChange={onChange}/>
+                            <Button
+                                onClick={() => {
+                                    let inputData = ''
+                                    const onChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+                                        inputData = e.target.value
+                                    };
+                                    Modal.info({
+                                        title: 'Add Station',
+                                        okText: 'OK',
+                                        closable: true,
+                                        maskClosable: true,
+                                        centered: true,
+                                        content: <div>
+                                            <TextArea showCount onChange={onChange}
+                                                      placeholder={'[{"name":"","lon":0.0,"lat":0.0}]'}/>
+                                        </div>,
+                                        icon: <InfoCircleOutlined style={{color: MacroDefines.PRIMARY_COLOR}}/>,
+                                        onOk: () => {
+                                            this.addStation(inputData)
+                                        }
+                                    })
+                                }}
+                            >
+                                Add Station
+                            </Button>
+                            <Button
+                                onClick={() => {
+                                    let inputData = ''
+                                    const onChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+                                        inputData = e.target.value
+                                    };
+                                    Modal.info({
+                                        title: 'Delete Station',
+                                        okText: 'OK',
+                                        closable: true,
+                                        maskClosable: true,
+                                        centered: true,
+                                        content: <div>
+                                            <TextArea showCount onChange={onChange}/>
+                                        </div>,
+                                        icon: <InfoCircleOutlined style={{color: MacroDefines.PRIMARY_COLOR}}/>,
+                                        onOk: () => {
+                                            this.deleteStation(inputData)
+                                        }
+                                    })
+                                }}
+                            >
+                                Delete Station
+                            </Button>
+                            <Table dataSource={this.graph.nodes} columns={StationColumns}/>
                         </div>,
                         icon: <InfoCircleOutlined style={{color: MacroDefines.PRIMARY_COLOR}}/>,
-                        onOk: handleOk
+                        onOk: () => {
+                            this.graph.updateGraph(this.lines)
+                            this.graphRef.current?.showGraph(this.graph, 'Graph')
+                        }
                     })
                 }}
                 type='primary'
                 shape='round'
             >
-                Input Graph
+                Station Manage
             </Button>
             <Button
                 id='dfsBtn'
-                onClick={
-                    async () => {
-                        this.dfsVisit.clear()
-                        this.stack = new Array<Node>()
-                        for (let i = 1; i <= this.graph.nodes.length; i += 1) {
-                            if (this.dfsVisit.get(i) !== 1) {
-                                await this.dfs(i)
-                            }
+                onClick={() => {
+                    Modal.info({
+                        title: 'Line Manage',
+                        okText: 'OK',
+                        closable: true,
+                        maskClosable: true,
+                        centered: true,
+                        content: <div>
+                            <Button
+                                onClick={() => {
+                                    let inputData = ''
+                                    const onChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+                                        inputData = e.target.value
+                                    };
+                                    Modal.info({
+                                        title: 'Add Line',
+                                        okText: 'OK',
+                                        closable: true,
+                                        maskClosable: true,
+                                        centered: true,
+                                        content: <div>
+                                            <TextArea showCount onChange={onChange} placeholder={'Add Station'}/>
+                                        </div>,
+                                        icon: <InfoCircleOutlined style={{color: MacroDefines.PRIMARY_COLOR}}/>,
+                                        onOk: () => {
+                                            this.addLine(inputData)
+                                        }
+                                    })
+                                }}
+                            >
+                                Add Line
+                            </Button>
+                            <Button
+                                onClick={() => {
+                                    let inputData = ''
+                                    const onChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+                                        inputData = e.target.value
+                                    };
+                                    Modal.info({
+                                        title: 'Delete Line',
+                                        okText: 'OK',
+                                        closable: true,
+                                        maskClosable: true,
+                                        centered: true,
+                                        content: <div>
+                                            <TextArea showCount onChange={onChange}/>
+                                        </div>,
+                                        icon: <InfoCircleOutlined style={{color: MacroDefines.PRIMARY_COLOR}}/>,
+                                        onOk: () => {
+                                            this.deleteLine(inputData)
+                                        }
+                                    })
+                                }}
+                            >
+                                Delete Line
+                            </Button>
+                            <Table dataSource={this.lines} columns={LineColumns} expandable={{
+                                expandedRowRender: line => <p style={{margin: 0}}>{line.nodeListJson}</p>,
+                            }}/>
+                        </div>,
+                        icon: <InfoCircleOutlined style={{color: MacroDefines.PRIMARY_COLOR}}/>,
+                        onOk: () => {
+                            this.graph.updateGraph(this.lines)
+                            this.graphRef.current?.showGraph(this.graph, 'Graph')
                         }
-                    }
-                }
+                    })
+                }}
                 type='primary'
                 shape='round'
             >
-                DFS
+                Line Manage
             </Button>
             <Button
                 id='bfsBtn'
                 onClick={
                     async () => {
                         this.bfsVisit.clear()
-                        this.queue = new Array<Node>()
-                        for (let i = 1; i <= this.graph.nodes.length; i += 1) {
-                            if (this.bfsVisit.get(i) !== 1) {
-                                await this.bfs(i)
-                            }
-                        }
                     }
                 }
                 type='primary'
                 shape='round'
             >
-                BFS
+                Find Way
             </Button>
 
+            <GraphCanvas style={{
+                borderRadius: '12px',
+                background: '#eef7f2af',
+                width: '46%',
+                height: '80%',
+                boxShadow: '0px 4px 10px #0005'
+            }} ref={this.graphRef}/>
 
-            <div className='columnContainer'>
-                <div className='rowContainer'>
-                    <GraphCanvas style={{
-                        borderRadius: '12px',
-                        background: '#eef7f2af',
-                        width: '46%',
-                        height: '80%',
-                        boxShadow: '0px 4px 10px #0005'
-                    }} ref={this.graphRef}/>
 
-                    <AdjacencyList style={{
-                        borderRadius: '12px',
-                        background: '#eef7f2af',
-                        width: '46%',
-                        height: '80%',
-                        boxShadow: '0px 4px 10px #0005'
-                    }} ref={this.adjacencyRef}/>
-                </div>
-                <div className='columnContainer' style={{height: 250}}>
-                    <Deque style={{
-                        borderRadius: '12px',
-                        background: '#eef7f2af',
-                        width: '96.3%',
-                        height: 70,
-                        boxShadow: '0px 4px 10px #0005',
-                    }} ref={this.dfsRef}/>
-                    <Deque style={{
-                        borderRadius: '12px',
-                        background: '#eef7f2af',
-                        width: '96.3%',
-                        height: 70,
-                        boxShadow: '0px 4px 10px #0005',
-                    }} ref={this.bfsRef}/>
-                </div>
-            </div>
         </div>
     }
 }
