@@ -60,8 +60,8 @@ export class GraphCanvas extends React.Component<RelationChartProps> {
         graph.nodes.forEach(node => {
             data.push({
                 name: node.name,
-                x: (node.lon - xMin) / xLen * this.chart.getWidth() * 1.2,
-                y: (1 - (node.lat - yMin) / yLen) * this.chart.getHeight() * 1.2,
+                x: (node.lon - xMin) / xLen * this.chart.getWidth(),
+                y: (1 - (node.lat - yMin) / yLen) * this.chart.getHeight(),
             })
         })
         console.log(data)
@@ -74,6 +74,7 @@ export class GraphCanvas extends React.Component<RelationChartProps> {
                 })
             }
         }
+        console.log(links)
 
         this.chart.clear()
         this.chart.setOption({
