@@ -1,7 +1,7 @@
 import {
     InfoCircleOutlined,
 } from '@ant-design/icons'
-import {Button, Modal, Space, Table, Input} from 'antd'
+import {Button, Modal, Table, Input} from 'antd'
 import React from 'react'
 import {Node, Edge, Line, Graph} from '../../data-structure/Base'
 import {MacroDefines} from '../../MacroDefines'
@@ -9,6 +9,7 @@ import './AppMain.css'
 import TextArea from "antd/es/input/TextArea";
 import type {ColumnsType} from 'antd/es/table';
 import {GraphCanvas} from "../../components/GraphCanvas"
+import {Deque} from "../../components/Deque"
 import {LineData, StationData} from "../../data/Data";
 
 type AppState = {
@@ -58,16 +59,19 @@ interface InputLine {
 interface NodeBfsState {
     node: Node
     line: Array<Node>
+    transfer: Array<string>
 }
 
 export default class AppMain extends React.Component<any, AppState> {
     private graph = new Graph()
     private lines = new Array<Line>()
     private readonly graphRef: React.RefObject<GraphCanvas>
+    private readonly bfsRef: React.RefObject<Deque>
 
     constructor(props: any) {
         super(props)
         this.graphRef = React.createRef()
+        this.bfsRef = React.createRef()
         Modal.info({
             title: 'Graph',
             okText: 'Sure',
@@ -76,8 +80,10 @@ export default class AppMain extends React.Component<any, AppState> {
             centered: true,
             content: <div>
                 Author: 2053302<br/>
-                First, tap input or random to get some data.<br/>
-                Then, tap BFS or DFS to show the queue or stack.<br/>
+                Tap Default Lines to load default data.<br/>
+                Tap Station Manage to view, add and delete stations.<br/>
+                Tap Line Manage to view, add and delete lines.<br/>
+                Tap Find Way to find the way from start station to finish station.<br/>
             </div>,
             icon: <InfoCircleOutlined style={{color: MacroDefines.PRIMARY_COLOR}}/>
         })
@@ -103,13 +109,11 @@ export default class AppMain extends React.Component<any, AppState> {
         nodes.forEach(node => {
             this.graph.addNode(node.name, node.lon, node.lat)
         })
-        console.log(this.graph.nodes)
         this.lines = new Array<Line>()
         let lines: Array<InputLine> = JSON.parse(LineData)
         lines.forEach(line => {
             this.lines.push(new Line(line.name, line.stations))
         })
-        console.log(this.lines)
         this.graph.updateGraph(this.lines)
     }
 
@@ -172,38 +176,53 @@ export default class AppMain extends React.Component<any, AppState> {
     private bfsVisit = new Map<number, number>()
     private queue = new Array<NodeBfsState>()
 
-    private async bfs(start: string, end: string) {
-        let startNode: Node = this.graph.nodes[0]
+    private bfs(start: string, end: string) {
+        this.bfsVisit = new Map<number, number>()
+        let startNode: Node = new Node(-1, '', 0.0, 0.0)
         for (let node of this.graph.nodes) {
             if (node.name === start) {
                 startNode = node
                 break
             }
         }
+        if (startNode.id === -1 || !this.graph.NameToId.has(end)) {
+            this.InputError()
+            return null
+        }
         this.queue.push({
             node: startNode,
             line: Array<Node>(startNode),
+            transfer: Array<string>(startNode.name)
         })
         this.bfsVisit.set(startNode.id, 1)
         while (this.queue.length > 0) {
             let now = this.queue[0]
             if (now.node.name === end) {
-                return this.queue[0].line
+                return now
             }
             this.queue.shift()
-            for (let e: Edge = this.graph.head[now.node.id - 1]; e && e.next && e.node.id !== now.node.id; e = e.next) {
+            for (let e: Edge = this.graph.head[now.node.id]; e && e.next && e.node.id !== now.node.id; e = e.next) {
                 if (this.bfsVisit.get(e.node.id) !== 1) {
-                    let nowLine = now.line
+                    let nowLine = now.line.slice()
                     nowLine.push(e.node)
+                    let nowTransfer = now.transfer.slice()
+                    if (nowTransfer.length <= 1 || nowTransfer[nowTransfer.length - 2] !== e.lineName) {
+                        nowTransfer.push(e.lineName)
+                        nowTransfer.push(e.node.name)
+                    } else {
+                        nowTransfer.pop()
+                        nowTransfer.push(e.node.name)
+                    }
                     this.queue.push({
                         node: e.node,
-                        line: nowLine
+                        line: nowLine,
+                        transfer: nowTransfer
                     })
                     this.bfsVisit.set(e.node.id, 1)
                 }
             }
         }
-        return new Array<Node>()
+        return null
     }
 
     override render(): React.ReactNode {
@@ -213,7 +232,7 @@ export default class AppMain extends React.Component<any, AppState> {
                 id='randomBtn'
                 onClick={() => {
                     this.loadDefaultData()
-                    this.graphRef.current?.showGraph(this.graph, 'Graph')
+                    this.graphRef.current?.showGraph(this.graph, 'Graph', this.lines)
                 }}
                 type='primary'
                 shape='round'
@@ -231,6 +250,7 @@ export default class AppMain extends React.Component<any, AppState> {
                         centered: true,
                         content: <div>
                             <Button
+                                id='addStationBtn'
                                 onClick={() => {
                                     let inputData = ''
                                     const onChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
@@ -256,6 +276,7 @@ export default class AppMain extends React.Component<any, AppState> {
                                 Add Station
                             </Button>
                             <Button
+                                id='deleteStationBtn'
                                 onClick={() => {
                                     let inputData = ''
                                     const onChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
@@ -268,7 +289,7 @@ export default class AppMain extends React.Component<any, AppState> {
                                         maskClosable: true,
                                         centered: true,
                                         content: <div>
-                                            <TextArea showCount onChange={onChange}/>
+                                            <TextArea showCount onChange={onChange} placeholder={'[""]'}/>
                                         </div>,
                                         icon: <InfoCircleOutlined style={{color: MacroDefines.PRIMARY_COLOR}}/>,
                                         onOk: () => {
@@ -279,12 +300,12 @@ export default class AppMain extends React.Component<any, AppState> {
                             >
                                 Delete Station
                             </Button>
-                            <Table dataSource={this.graph.nodes} columns={StationColumns}/>
+                            <Table dataSource={this.graph.nodes} columns={StationColumns} rowKey='name'/>
                         </div>,
                         icon: <InfoCircleOutlined style={{color: MacroDefines.PRIMARY_COLOR}}/>,
                         onOk: () => {
                             this.graph.updateGraph(this.lines)
-                            this.graphRef.current?.showGraph(this.graph, 'Graph')
+                            this.graphRef.current?.showGraph(this.graph, 'Graph', this.lines)
                         }
                     })
                 }}
@@ -304,6 +325,7 @@ export default class AppMain extends React.Component<any, AppState> {
                         centered: true,
                         content: <div>
                             <Button
+                                id='addLineBtn'
                                 onClick={() => {
                                     let inputData = ''
                                     const onChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
@@ -316,11 +338,13 @@ export default class AppMain extends React.Component<any, AppState> {
                                         maskClosable: true,
                                         centered: true,
                                         content: <div>
-                                            <TextArea showCount onChange={onChange} placeholder={'Add Station'}/>
+                                            <TextArea showCount onChange={onChange}
+                                                      placeholder={'{"name":"","nodeNames":[""]}'}/>
                                         </div>,
                                         icon: <InfoCircleOutlined style={{color: MacroDefines.PRIMARY_COLOR}}/>,
                                         onOk: () => {
                                             this.addLine(inputData)
+                                            console.log(this.lines[0])
                                         }
                                     })
                                 }}
@@ -328,6 +352,7 @@ export default class AppMain extends React.Component<any, AppState> {
                                 Add Line
                             </Button>
                             <Button
+                                id='deleteLineBtn'
                                 onClick={() => {
                                     let inputData = ''
                                     const onChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
@@ -340,7 +365,7 @@ export default class AppMain extends React.Component<any, AppState> {
                                         maskClosable: true,
                                         centered: true,
                                         content: <div>
-                                            <TextArea showCount onChange={onChange}/>
+                                            <TextArea showCount onChange={onChange} placeholder={'[""]'}/>
                                         </div>,
                                         icon: <InfoCircleOutlined style={{color: MacroDefines.PRIMARY_COLOR}}/>,
                                         onOk: () => {
@@ -351,14 +376,14 @@ export default class AppMain extends React.Component<any, AppState> {
                             >
                                 Delete Line
                             </Button>
-                            <Table dataSource={this.lines} columns={LineColumns} expandable={{
+                            <Table dataSource={this.lines} columns={LineColumns} rowKey='name' expandable={{
                                 expandedRowRender: line => <p style={{margin: 0}}>{line.nodeListJson}</p>,
                             }}/>
                         </div>,
                         icon: <InfoCircleOutlined style={{color: MacroDefines.PRIMARY_COLOR}}/>,
                         onOk: () => {
                             this.graph.updateGraph(this.lines)
-                            this.graphRef.current?.showGraph(this.graph, 'Graph')
+                            this.graphRef.current?.showGraph(this.graph, 'Graph', this.lines)
                         }
                     })
                 }}
@@ -370,7 +395,33 @@ export default class AppMain extends React.Component<any, AppState> {
             <Button
                 id='bfsBtn'
                 onClick={() => {
-                    let ansLine = this.bfs('', '')
+                    let start: string, finish: string
+                    const onChangeStart = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+                        start = e.target.value
+                    }
+                    const onChangeFinish = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+                        finish = e.target.value
+                    }
+                    Modal.info({
+                        title: 'Find Way',
+                        okText: 'OK',
+                        closable: true,
+                        maskClosable: true,
+                        centered: true,
+                        content: <div>
+                            <Input showCount onChange={onChangeStart} placeholder={'Start'}/>
+                            <br/><br/>
+                            <Input showCount onChange={onChangeFinish} placeholder={'Finish'}/>
+                        </div>,
+                        icon: <InfoCircleOutlined style={{color: MacroDefines.PRIMARY_COLOR}}/>,
+                        onOk: () => {
+                            let way = this.bfs(start, finish)
+                            if (way != null) {
+                                this.graphRef.current?.showGraph(this.graph, 'Graph', this.lines, way.line)
+                                this.bfsRef.current?.showGraph(way.transfer, 'Found Way')
+                            }
+                        }
+                    })
                 }}
                 type='primary'
                 shape='round'
@@ -378,14 +429,21 @@ export default class AppMain extends React.Component<any, AppState> {
                 Find Way
             </Button>
 
+            <br/>
             <GraphCanvas style={{
                 borderRadius: '12px',
                 background: '#eef7f2af',
                 width: '98%',
-                height: '90%',
-                boxShadow: '0px 4px 10px #0005'
+                height: '86%',
+                boxShadow: '0px 4px 10px #0005',
             }} ref={this.graphRef}/>
-
+            <Deque style={{
+                borderRadius: '12px',
+                background: '#eef7f2af',
+                width: '98%',
+                height: '7%',
+                boxShadow: '0px 4px 10px #0005'
+            }} ref={this.bfsRef}/>
 
         </div>
     }
