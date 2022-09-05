@@ -28,7 +28,7 @@ export class Deque extends React.Component<RelationChartProps> {
         this.chart = echarts.init(this.selfRef.current!)
     }
 
-    showGraph(nodes: Array<Node>, title: String) {
+    showGraph(nodes: Array<Array<Node>>, title: String) {
         this.setState({
             visibility: 'visible'
         })
@@ -37,24 +37,28 @@ export class Deque extends React.Component<RelationChartProps> {
         let links = new Array<FreeKeyObject>()
         let xSeg = this.chart.getWidth() / nodes.length
 
-        for (let i = 0; i < nodes.length; i += 1) {
-            data.push({
-                name: nodes[i].id.toString(),
-                draggable: false,
-                x: i * xSeg,
-                y: this.chart.getHeight() / 2
-            })
-        }
-
-        for (let i = 0; i < nodes.length - 1; i += 1) {
-            links.push({
-                source: nodes[i].id.toString(),
-                target: nodes[i + 1].id.toString()
-            })
-        }
+        let cnt = 0
+        nodes.forEach(node => {
+            for (let i = 0; i < node.length; i += 1) {
+                data.push({
+                    name: node[i].id.toString(),
+                    draggable: false,
+                    x: (cnt++) * xSeg,
+                    y: this.chart.getHeight() / 2
+                })
+            }
+            if (node.length >= 2) {
+                for (let i = 0; i < node.length - 1; i += 1) {
+                    links.push({
+                        source: node[i].id.toString(),
+                        target: node[i + 1].id.toString()
+                    })
+                }
+            }
+        })
 
         this.chart.clear()
-        if (nodes.length === 0) {
+        if (data.length === 0) {
             return
         }
         this.chart.setOption({

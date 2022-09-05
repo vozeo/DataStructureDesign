@@ -50,10 +50,11 @@ export default class AppMain extends React.Component<any, AppState> {
 
     }
 
+    // Generate random graph
     private randomGraph() {
         this.graph = new Graph()
         let n = Math.random() * 11 + 10
-        let data = new Array<String>()
+        let data = new Array<String>() // Generate random graph data
         for (let i = 0; i < n; i += 1) {
             let str = ''
             for (let j = 0; j < n; j += 1) {
@@ -61,7 +62,7 @@ export default class AppMain extends React.Component<any, AppState> {
             }
             data.push(str)
         }
-        this.graph.importGraph(data)
+        this.graph.importGraph(data) // Import graph data
     }
 
     private dfsVisit = new Map<number, number>()
@@ -73,43 +74,68 @@ export default class AppMain extends React.Component<any, AppState> {
     }
 
     private async drawDfsStack() {
-        this.dfsRef.current?.showGraph(this.stack, 'DFS Stack')
+        this.dfsRef.current?.showGraph([this.stack], 'DFS Stack')
         await this.sleep(TimeSeg)
     }
 
     private async drawBfsQueue() {
-        this.bfsRef.current?.showGraph(this.queue, 'BFS Queue')
+        this.bfsRef.current?.showGraph([this.queue], 'BFS Queue')
         await this.sleep(TimeSeg)
     }
 
+
+    private dfsRes = new Array<Node>() // Show the result of DFS
+    // Recursive Dfs
     private async dfs(now: number) {
         this.dfsVisit.set(now, 1)
-        this.stack.push(this.graph.nodes[now - 1])
-        await this.drawDfsStack()
+        this.stack.push(this.graph.nodes[now - 1]) // Push the node into stack
+        this.dfsRes.push(this.graph.nodes[now - 1])
+        await this.drawDfsStack() // Draw the stack
         for (let e: Edge = this.graph.head[now - 1]; e && e.next && e.node.id !== now; e = e.next) {
-            if (this.dfsVisit.get(e.node.id) !== 1) {
+            if (this.dfsVisit.get(e.node.id) !== 1) { // If the node is not visited
                 await this.dfs(e.node.id)
             }
         }
-        this.stack.pop()
+        this.stack.pop() // Pop the node from stack
+        await this.drawDfsStack()
+    }
+
+    // Non-recursive Dfs
+    private async dfsNonRecursive(start: number) {
+        this.dfsVisit.set(start, 1) // Set the start node as visited
+        this.stack.push(this.graph.nodes[start - 1])
+        this.dfsRes.push(this.graph.nodes[start - 1]) // Push the start node into result
+        await this.drawDfsStack()
+        while (this.stack.length > 0) {
+            let now = this.stack.pop()?.id! // Get the front node of stack
+            for (let e: Edge = this.graph.head[now - 1]; e && e.next && e.node.id !== now; e = e.next) { // Traverse the adjacency list
+                if (this.dfsVisit.get(e.node.id) !== 1) { // If the node is not visited
+                    this.stack.push(this.graph.nodes[now - 1])
+                    this.dfsRes.push(this.graph.nodes[now - 1])
+                }
+            }
+        }
         await this.drawDfsStack()
     }
 
     private queue = new Array<Node>()
+    private bfsRes = new Array<Node>()
 
+    // Bfs
     private async bfs(start: number) {
-        this.queue.push(this.graph.nodes[start - 1])
+        this.queue.push(this.graph.nodes[start - 1]) // Push the start node into queue
         await this.drawBfsQueue()
         this.bfsVisit.set(start, 1)
         while (this.queue.length > 0) {
             let now = this.queue[0]
-            this.queue.shift()
+            this.queue.shift() // Pop the front node from queue
             await this.drawBfsQueue()
+            this.bfsRes.push(now)
             for (let e: Edge = this.graph.head[now.id - 1]; e && e.next && e.node.id !== now.id; e = e.next) {
-                if (this.bfsVisit.get(e.node.id) !== 1) {
+                if (this.bfsVisit.get(e.node.id) !== 1) { // If the node is not visited
                     this.queue.push(e.node)
                     this.bfsVisit.set(e.node.id, 1)
-                    await this.drawBfsQueue()
+                    await this.drawBfsQueue() // Draw the queue
                 }
             }
         }
@@ -140,7 +166,21 @@ export default class AppMain extends React.Component<any, AppState> {
                         importList = e.target.value.split('\n')
                     }
                     const handleOk = () => {
-                        this.graph.importGraph(importList)
+                        let res = this.graph.importGraph(importList)
+                        if (res !== 0) {
+                            Modal.info({
+                                title: 'Input Error',
+                                okText: 'OK',
+                                closable: true,
+                                maskClosable: true,
+                                centered: true,
+                                content: <div>
+                                    Your input data has error, please input correct data!
+                                </div>,
+                                icon: <InfoCircleOutlined style={{color: MacroDefines.PRIMARY_COLOR}}/>,
+                            })
+                            return
+                        }
                         this.graphRef.current?.showGraph(this.graph, 'Graph')
                         this.adjacencyRef.current?.showGraph(this.graph, 'Adjacency')
                     }
@@ -167,12 +207,16 @@ export default class AppMain extends React.Component<any, AppState> {
                 onClick={
                     async () => {
                         this.dfsVisit.clear()
-                        this.stack = new Array<Node>()
+                        let dfsShow = new Array<Array<Node>>()
                         for (let i = 1; i <= this.graph.nodes.length; i += 1) {
                             if (this.dfsVisit.get(i) !== 1) {
+                                this.stack = new Array<Node>()
+                                this.dfsRes = new Array<Node>()
                                 await this.dfs(i)
+                                dfsShow.push(this.dfsRes)
                             }
                         }
+                        this.dfsRef.current?.showGraph(dfsShow, 'DFS Result')
                     }
                 }
                 type='primary'
@@ -185,12 +229,16 @@ export default class AppMain extends React.Component<any, AppState> {
                 onClick={
                     async () => {
                         this.bfsVisit.clear()
-                        this.queue = new Array<Node>()
+                        let bfsShow = new Array<Array<Node>>()
                         for (let i = 1; i <= this.graph.nodes.length; i += 1) {
                             if (this.bfsVisit.get(i) !== 1) {
+                                this.queue = new Array<Node>()
+                                this.bfsRes = new Array<Node>()
                                 await this.bfs(i)
+                                bfsShow.push(this.bfsRes)
                             }
                         }
+                        this.bfsRef.current?.showGraph(bfsShow, 'BFS Result')
                     }
                 }
                 type='primary'

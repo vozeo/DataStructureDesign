@@ -89,7 +89,7 @@ export default class AppMain extends React.Component<any, AppState> {
         })
     }
 
-    private InputError() {
+    private InputError(text: string) {
         Modal.info({
             title: 'Input Error',
             okText: 'OK',
@@ -97,96 +97,102 @@ export default class AppMain extends React.Component<any, AppState> {
             maskClosable: true,
             centered: true,
             content: <div>
-                Your input data has error, please input correct data!
+                {text}
             </div>,
             icon: <InfoCircleOutlined style={{color: MacroDefines.PRIMARY_COLOR}}/>,
         })
     }
 
+    // load the default data of the metro
     private loadDefaultData() {
         this.graph = new Graph()
-        let nodes: Array<InputNode> = JSON.parse(StationData)
+        let nodes: Array<InputNode> = JSON.parse(StationData) // prase the data of the station 
         nodes.forEach(node => {
             this.graph.addNode(node.name, node.lon, node.lat)
         })
         this.lines = new Array<Line>()
-        let lines: Array<InputLine> = JSON.parse(LineData)
+        let lines: Array<InputLine> = JSON.parse(LineData) // parse the data of the line
         lines.forEach(line => {
             this.lines.push(new Line(line.name, line.stations))
         })
-        this.graph.updateGraph(this.lines)
+        this.graph.updateGraph(this.lines) // update the graph
     }
 
+    // add the stations from the input data
     private addStation(data: string) {
         try {
-            let inputNodes: Array<InputNode> = JSON.parse(data)
+            let inputNodes: Array<InputNode> = JSON.parse(data) // parse the input data
             inputNodes.forEach(node => {
-                if (!this.graph.NameToId.has(node.name)) {
+                if (!this.graph.NameToId.has(node.name)) { // if the station has not in the graph
                     this.graph.addNode(node.name, node.lon, node.lat)
                 }
             })
         } catch (e) {
-            this.InputError()
+            this.InputError('Add station data has error, please input correct data!')
         }
     }
 
+    // delete the stations from the input data
     private deleteStation(data: string) {
         try {
-            let inputNodes: Array<string> = JSON.parse(data)
+            let inputNodes: Array<string> = JSON.parse(data) // parse the input data
             inputNodes.forEach(name => {
-                this.graph.deleteNode(name)
+                this.graph.deleteNode(name) // delete the station
             })
         } catch (e) {
-            this.InputError()
+            this.InputError('Delete station data has error, please input correct data!')
         }
     }
 
+    // add the lines from the input data
     private addLine(data: string) {
         try {
-            let inputLines: Array<InputLine> = JSON.parse(data)
+            let inputLines: Array<InputLine> = JSON.parse(data) // parse the input data
             inputLines.forEach(line => {
                 line.stations.forEach(station => {
-                    if (!this.graph.NameToId.has(station)) {
+                    if (!this.graph.NameToId.has(station)) { // if the station has not in the graph
                         throw new Error('The station has not be inputted!')
                     }
                 })
-                this.lines.push(new Line(line.name, line.stations))
+                this.lines.push(new Line(line.name, line.stations)) // add the line
             })
         } catch (e) {
-            this.InputError()
+            this.InputError('Add line data has error, please input correct data!')
         }
     }
 
+    // delete the lines from the input data
     private deleteLine(data: string) {
         try {
-            let inputLines: Array<string> = JSON.parse(data)
+            let inputLines: Array<string> = JSON.parse(data) // parse the input data
             inputLines.forEach(name => {
                 for (let i = 0; i < this.lines.length; ++i) {
-                    if (this.lines[i].name === name) {
-                        this.lines.splice(i, 1)
+                    if (this.lines[i].name === name) { // if the line has in the graph
+                        this.lines.splice(i, 1) // delete the line
                         break
                     }
                 }
             })
         } catch (e) {
-            this.InputError()
+            this.InputError('Delete line data has error, please input correct data!')
         }
     }
 
     private bfsVisit = new Map<number, number>()
     private queue = new Array<NodeBfsState>()
 
+    // find the way from start station to finish station
     private bfs(start: string, end: string) {
-        this.bfsVisit = new Map<number, number>()
+        this.bfsVisit = new Map<number, number>() // clear the bfs visit
         let startNode: Node = new Node(-1, '', 0.0, 0.0)
-        for (let node of this.graph.nodes) {
+        for (let node of this.graph.nodes) { // find start node
             if (node.name === start) {
                 startNode = node
                 break
             }
         }
-        if (startNode.id === -1 || !this.graph.NameToId.has(end)) {
-            this.InputError()
+        if (startNode.id === -1 || !this.graph.NameToId.has(end)) { // start node not found or end node not found
+            this.InputError('Input station is not found, please input correct data!')
             return null
         }
         this.queue.push({
@@ -194,19 +200,19 @@ export default class AppMain extends React.Component<any, AppState> {
             line: Array<Node>(startNode),
             transfer: Array<string>(startNode.name)
         })
-        this.bfsVisit.set(startNode.id, 1)
+        this.bfsVisit.set(startNode.id, 1) // set the start node as visited
         while (this.queue.length > 0) {
             let now = this.queue[0]
-            if (now.node.name === end) {
+            if (now.node.name === end) { // if the end node is found
                 return now
             }
             this.queue.shift()
             for (let e: Edge = this.graph.head[now.node.id]; e && e.next && e.node.id !== now.node.id; e = e.next) {
-                if (this.bfsVisit.get(e.node.id) !== 1) {
+                if (this.bfsVisit.get(e.node.id) !== 1) { // if the node has not been visited
                     let nowLine = now.line.slice()
                     nowLine.push(e.node)
-                    let nowTransfer = now.transfer.slice()
-                    if (nowTransfer.length <= 1 || nowTransfer[nowTransfer.length - 2] !== e.lineName) {
+                    let nowTransfer = now.transfer.slice() // copy the transfer array
+                    if (nowTransfer.length <= 1 || nowTransfer[nowTransfer.length - 2] !== e.lineName) { // if the current edge is not same as the last edge
                         nowTransfer.push(e.lineName)
                         nowTransfer.push(e.node.name)
                     } else {
@@ -218,7 +224,7 @@ export default class AppMain extends React.Component<any, AppState> {
                         line: nowLine,
                         transfer: nowTransfer
                     })
-                    this.bfsVisit.set(e.node.id, 1)
+                    this.bfsVisit.set(e.node.id, 1) // set the node as visited
                 }
             }
         }
@@ -339,7 +345,7 @@ export default class AppMain extends React.Component<any, AppState> {
                                         centered: true,
                                         content: <div>
                                             <TextArea showCount onChange={onChange}
-                                                      placeholder={'{"name":"","nodeNames":[""]}'}/>
+                                                      placeholder={'{"name":"","stations":[""]}'}/>
                                         </div>,
                                         icon: <InfoCircleOutlined style={{color: MacroDefines.PRIMARY_COLOR}}/>,
                                         onOk: () => {
